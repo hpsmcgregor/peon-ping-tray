@@ -1,0 +1,17 @@
+# Planning docs — local only, kept out of this public repo
+docs/superpowers/
+
+# Build output
+[Bb]in/
+[Oo]bj/
+*.exe
+*.pdb
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+desktop.ini
