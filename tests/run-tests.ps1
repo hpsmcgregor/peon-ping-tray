@@ -78,16 +78,24 @@ $fx3 = New-Fixture -Enabled $true -DefaultPack 'peon'
 Add-Pack -HookDir $fx3 -Id 'peon'   -DisplayName 'Orc Peon'
 Add-Pack -HookDir $fx3 -Id 'glados' -DisplayName 'GLaDOS'
 Add-Pack -HookDir $fx3 -Id 'nodisp' -DisplayName '' -NoWav
+# pack whose only sound is an mp3 (no wav) — preview must still resolve
+$mp3p = Join-Path (Join-Path $fx3 'packs') 'mp3only'
+New-Item -ItemType Directory -Force -Path (Join-Path $mp3p 'sounds') | Out-Null
+($([pscustomobject]@{ display_name = 'MP3 Only' }) | ConvertTo-Json) |
+  Set-Content -Path (Join-Path $mp3p 'openpeon.json') -Encoding UTF8
+Set-Content -Path (Join-Path $mp3p 'sounds\clip.mp3') -Value 'x' -Encoding ASCII
 $d3 = Dump $fx3 $null
 $ids = @($d3.packs | ForEach-Object { $_.id })
 Assert-True ($ids -contains 'peon' -and $ids -contains 'glados') "packs discovered"
 $peon = $d3.packs | Where-Object { $_.id -eq 'peon' }
 Assert-Equal 'Orc Peon' $peon.displayName "display_name read"
 Assert-Equal 'True'     $peon.isCurrent   "current pack flagged"
-Assert-True ($peon.previewWav -like '*a_first.wav') "first wav chosen for preview"
+Assert-True ($peon.previewSound -like '*a_first.wav') "first sound chosen for preview"
 $nod = $d3.packs | Where-Object { $_.id -eq 'nodisp' }
 Assert-Equal 'nodisp' $nod.displayName "empty display_name falls back to id"
-Assert-True ($null -eq $nod.previewWav) "no wav => null preview"
+Assert-True ($null -eq $nod.previewSound) "no sound => null preview"
+$mp3 = $d3.packs | Where-Object { $_.id -eq 'mp3only' }
+Assert-True ($mp3.previewSound -like '*clip.mp3') "mp3-only pack resolves preview"
 
 # --- Task 4: grouping ---
 $conf = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_groups_" + [System.Guid]::NewGuid().ToString('N') + ".conf")

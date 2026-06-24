@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
-using System.Media;
 using System.Reflection;
 using System.Windows.Forms;
 using PeonPingTray.Core;
@@ -130,13 +129,14 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         _menu.Items.Add(new ToolStripMenuItem("Sound Pack: " + currentDisplay) { Enabled = false });
 
+        double vol = cfg.Volume;
         var ids = new List<string>();
         foreach (PackInfo p in packs) ids.Add(p.Id);
         List<string> ordered = rules.OrderedGroups(ids);
 
         if (ordered.Count <= 1)
         {
-            foreach (PackInfo p in packs) _menu.Items.Add(BuildPackItem(p, current));
+            foreach (PackInfo p in packs) _menu.Items.Add(BuildPackItem(p, current, vol));
         }
         else
         {
@@ -144,7 +144,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             {
                 var groupItem = new ToolStripMenuItem(grp);
                 foreach (PackInfo p in packs)
-                    if (rules.GroupFor(p.Id) == grp) groupItem.DropDownItems.Add(BuildPackItem(p, current));
+                    if (rules.GroupFor(p.Id) == grp) groupItem.DropDownItems.Add(BuildPackItem(p, current, vol));
                 _menu.Items.Add(groupItem);
             }
         }
@@ -154,7 +154,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _menu.Items.Add(Item("Exit", (_, _) => ExitApp()));
     }
 
-    ToolStripMenuItem BuildPackItem(PackInfo p, string? current)
+    ToolStripMenuItem BuildPackItem(PackInfo p, string? current, double volume)
     {
         var item = new ToolStripMenuItem(p.DisplayName) { Checked = p.Id == current };
         string id = p.Id;
@@ -162,11 +162,11 @@ public sealed class TrayApplicationContext : ApplicationContext
         use.Click += (_, _) => { PeonCli.Run(_hookDir, "packs", "use", id); UpdateIcon(); };
         item.DropDownItems.Add(use);
 
-        if (!string.IsNullOrEmpty(p.PreviewWav))
+        if (!string.IsNullOrEmpty(p.PreviewSound))
         {
-            string wav = p.PreviewWav;
+            string sound = p.PreviewSound;
             var prev = new ToolStripMenuItem("▶ Preview");
-            prev.Click += (_, _) => PlayWav(wav);
+            prev.Click += (_, _) => PeonCli.PlaySound(_hookDir, sound, volume);
             item.DropDownItems.Add(prev);
         }
         return item;
@@ -179,17 +179,12 @@ public sealed class TrayApplicationContext : ApplicationContext
         return i;
     }
 
-    static void PlayWav(string path)
-    {
-        try { using var sp = new SoundPlayer(path); sp.Play(); }
-        catch { }
-    }
-
     void ExitApp()
     {
         try { _icon.Visible = false; } catch { }
         if (_watcher is not null) { try { _watcher.EnableRaisingEvents = false; _watcher.Dispose(); } catch { } }
         try { _icon.Dispose(); } catch { }
+        try { _marshal.Dispose(); } catch { }
         ExitThread();
     }
 }

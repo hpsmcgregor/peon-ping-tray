@@ -9,7 +9,7 @@ public sealed class PackInfo
 {
     public string Id = "";
     public string DisplayName = "";
-    public string? PreviewWav;
+    public string? PreviewSound;
 }
 
 public static class PackCatalog
@@ -47,12 +47,35 @@ public static class PackCatalog
             string soundsDir = Path.Combine(dir, "sounds");
             if (Directory.Exists(soundsDir))
             {
-                string[] wavs = Directory.GetFiles(soundsDir, "*.wav");
-                Array.Sort(wavs, StringComparer.OrdinalIgnoreCase);
-                if (wavs.Length > 0) info.PreviewWav = wavs[0];
+                string[] sounds = Directory.GetFiles(soundsDir);
+                Array.Sort(sounds, StringComparer.OrdinalIgnoreCase);
+                foreach (string f in sounds)
+                {
+                    if (IsAudio(Path.GetExtension(f))) { info.PreviewSound = f; break; }
+                }
             }
             result.Add(info);
         }
         return result;
+    }
+
+    // Sound formats peon-ping's win-play.ps1 can play (wav/mp3/wma natively;
+    // ogg/flac/etc. via its ffplay/mpv/vlc fallback chain).
+    static bool IsAudio(string ext)
+    {
+        switch (ext.ToLowerInvariant())
+        {
+            case ".wav":
+            case ".mp3":
+            case ".wma":
+            case ".ogg":
+            case ".flac":
+            case ".m4a":
+            case ".aac":
+            case ".aiff":
+                return true;
+            default:
+                return false;
+        }
     }
 }

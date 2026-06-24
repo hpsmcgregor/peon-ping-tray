@@ -28,7 +28,7 @@ public static class Diagnostics
             {
                 ["id"] = p.Id,
                 ["displayName"] = p.DisplayName,
-                ["previewWav"] = p.PreviewWav,
+                ["previewSound"] = p.PreviewSound,
                 ["group"] = rules.GroupFor(p.Id),
                 ["isCurrent"] = p.Id == cfg.DefaultPack
             });
