@@ -1,5 +1,6 @@
-# Planning docs — local only, kept out of this public repo
+# Planning docs & agent scratch — local only, kept out of this public repo
 docs/superpowers/
+.superpowers/
 
 # Build output
 [Bb]in/
