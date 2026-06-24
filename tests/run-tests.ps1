@@ -15,9 +15,24 @@ function Assert-True($cond, $msg) {
 $exe = & (Join-Path $root 'build.ps1') | Select-Object -Last 1
 Assert-True (Test-Path $exe) "build produced exe at $exe"
 
+# Invoke the (WinExe) exe and reliably wait for it + capture stdout. A plain
+# "& $exe" does not reliably wait for / capture a GUI-subsystem app's output,
+# so use Start-Process -Wait with a redirected stdout file.
+function Invoke-Exe([string[]]$ExeArgs) {
+  $so = [System.IO.Path]::GetTempFileName()
+  $se = [System.IO.Path]::GetTempFileName()
+  try {
+    $p = Start-Process -FilePath $exe -ArgumentList $ExeArgs -Wait -PassThru -NoNewWindow `
+           -RedirectStandardOutput $so -RedirectStandardError $se
+    return [pscustomobject]@{ ExitCode = $p.ExitCode; Out = (Get-Content $so -Raw) }
+  } finally {
+    Remove-Item $so, $se -Force -ErrorAction SilentlyContinue
+  }
+}
+
 function Dump($hookDir, $groupsConf) {
   $a = @('--dump', $hookDir); if ($groupsConf) { $a += $groupsConf }
-  return (& $exe @a | ConvertFrom-Json)
+  return ((Invoke-Exe $a).Out | ConvertFrom-Json)
 }
 
 function New-Fixture { param([bool]$Enabled = $true, [string]$DefaultPack = 'peon')
@@ -89,6 +104,19 @@ Assert-Equal 'Warcraft'  (($d4.packs | Where-Object { $_.id -eq 'peon' }).group)
 Assert-Equal 'StarCraft' (($d4.packs | Where-Object { $_.id -eq 'sc_scv' }).group) "sc_* glob => StarCraft"
 Assert-Equal 'Other'     (($d4.packs | Where-Object { $_.id -eq 'duke' }).group)   "unmatched => Other"
 Assert-Equal 'StarCraft,Warcraft,Other' (($d4.groupsOrder) -join ',') "group order = config order, Other last"
+
+# --- Task 5: peon.ps1 invocation ---
+$fx5 = New-Fixture -Enabled $true -DefaultPack 'peon'
+$marker = Join-Path $fx5 'invoked.txt'
+Set-Content -Path (Join-Path $fx5 'peon.ps1') -Encoding UTF8 -Value '$args -join " " | Set-Content -Path (Join-Path $PSScriptRoot "invoked.txt"); exit 0'
+$res = Invoke-Exe @('--run-peon', $fx5, 'packs', 'use', 'glados')
+Assert-Equal 'OK' ($res.Out).Trim() "--run-peon returns OK on exit 0"
+Assert-True (Test-Path $marker) "fake peon.ps1 was invoked"
+Assert-Equal 'packs use glados' ((Get-Content $marker -Raw).Trim()) "args forwarded to peon.ps1"
+
+$fx5b = New-Fixture   # no peon.ps1 present
+$res2 = Invoke-Exe @('--run-peon', $fx5b, 'pause')
+Assert-Equal 'FAIL' ($res2.Out).Trim() "--run-peon returns FAIL when peon.ps1 missing"
 
 Write-Host ""
 if ($script:fail -gt 0) { Write-Host "$($script:fail) failure(s)." -ForegroundColor Red; exit 1 }

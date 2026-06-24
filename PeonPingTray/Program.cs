@@ -23,6 +23,16 @@ static class Program
             return 0;
         }
 
+        if (mode == "--run-peon")
+        {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+            string hookDir = args.Length > 1 ? args[1] : Paths.DefaultHookDir();
+            string[] rest = args.Length > 2 ? args[2..] : Array.Empty<string>();
+            bool ok = PeonCli.Run(hookDir, rest);
+            Console.WriteLine(ok ? "OK" : "FAIL");
+            return ok ? 0 : 1;
+        }
+
         // GUI launch is wired up in Task 7.
         return 0;
     }
