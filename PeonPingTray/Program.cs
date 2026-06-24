@@ -33,6 +33,16 @@ static class Program
             return ok ? 0 : 1;
         }
 
+        if (mode == "--icon-selftest")
+        {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+            using var on = IconFactory.Create("ON");
+            using var off = IconFactory.Create("OFF");
+            using var unk = IconFactory.Create("X");
+            Console.WriteLine($"{on.Width}x{on.Height} {off.Width}x{off.Height} {unk.Width}x{unk.Height}");
+            return 0;
+        }
+
         // GUI launch is wired up in Task 7.
         return 0;
     }

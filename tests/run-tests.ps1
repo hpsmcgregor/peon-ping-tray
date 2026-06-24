@@ -118,6 +118,10 @@ $fx5b = New-Fixture   # no peon.ps1 present
 $res2 = Invoke-Exe @('--run-peon', $fx5b, 'pause')
 Assert-Equal 'FAIL' ($res2.Out).Trim() "--run-peon returns FAIL when peon.ps1 missing"
 
+# --- Task 6: icon rendering ---
+$iconOut = (Invoke-Exe @('--icon-selftest')).Out
+Assert-Equal '16x16 16x16 16x16' ("$iconOut").Trim() "icons render at 16x16 for all 3 states"
+
 Write-Host ""
 if ($script:fail -gt 0) { Write-Host "$($script:fail) failure(s)." -ForegroundColor Red; exit 1 }
 Write-Host "All tests passed." -ForegroundColor Green
