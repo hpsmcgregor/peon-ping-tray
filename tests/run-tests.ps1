@@ -74,6 +74,22 @@ $nod = $d3.packs | Where-Object { $_.id -eq 'nodisp' }
 Assert-Equal 'nodisp' $nod.displayName "empty display_name falls back to id"
 Assert-True ($null -eq $nod.previewWav) "no wav => null preview"
 
+# --- Task 4: grouping ---
+$conf = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_groups_" + [System.Guid]::NewGuid().ToString('N') + ".conf")
+Set-Content -Path $conf -Encoding UTF8 -Value @"
+sc_*   = StarCraft
+peon   = Warcraft
+"@
+$fx4 = New-Fixture -Enabled $true -DefaultPack 'peon'
+Add-Pack -HookDir $fx4 -Id 'peon'   -DisplayName 'Orc Peon'
+Add-Pack -HookDir $fx4 -Id 'sc_scv' -DisplayName 'SCV'
+Add-Pack -HookDir $fx4 -Id 'duke'   -DisplayName 'Duke'      # matches nothing => Other
+$d4 = Dump $fx4 $conf
+Assert-Equal 'Warcraft'  (($d4.packs | Where-Object { $_.id -eq 'peon' }).group)   "peon => Warcraft"
+Assert-Equal 'StarCraft' (($d4.packs | Where-Object { $_.id -eq 'sc_scv' }).group) "sc_* glob => StarCraft"
+Assert-Equal 'Other'     (($d4.packs | Where-Object { $_.id -eq 'duke' }).group)   "unmatched => Other"
+Assert-Equal 'StarCraft,Warcraft,Other' (($d4.groupsOrder) -join ',') "group order = config order, Other last"
+
 Write-Host ""
 if ($script:fail -gt 0) { Write-Host "$($script:fail) failure(s)." -ForegroundColor Red; exit 1 }
 Write-Host "All tests passed." -ForegroundColor Green

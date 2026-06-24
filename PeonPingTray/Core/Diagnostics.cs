@@ -17,6 +17,9 @@ public static class Diagnostics
         dump["defaultPack"] = cfg.DefaultPack;
         dump["volume"] = cfg.Volume;
 
+        string confPath = string.IsNullOrEmpty(groupsConfPath) ? Paths.GroupsConf() : groupsConfPath;
+        var rules = GroupRules.Load(confPath);
+
         var packs = PackCatalog.Discover(hookDir);
         var packDump = new List<object?>();
         foreach (var p in packs)
@@ -26,10 +29,15 @@ public static class Diagnostics
                 ["id"] = p.Id,
                 ["displayName"] = p.DisplayName,
                 ["previewWav"] = p.PreviewWav,
+                ["group"] = rules.GroupFor(p.Id),
                 ["isCurrent"] = p.Id == cfg.DefaultPack
             });
         }
         dump["packs"] = packDump;
+
+        var ids = new List<string>();
+        foreach (var p in packs) ids.Add(p.Id);
+        dump["groupsOrder"] = rules.OrderedGroups(ids);
 
         return JsonSerializer.Serialize(dump);
     }
