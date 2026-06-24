@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using PeonPingTray.Core;
 
 namespace PeonPingTray;
@@ -20,9 +18,8 @@ static class Program
         {
             AttachConsole(ATTACH_PARENT_PROCESS);
             string hookDir = args.Length > 1 ? args[1] : Paths.DefaultHookDir();
-            // Task 2 swaps this for Diagnostics.BuildDumpJson(hookDir, groupsConf).
-            var map = new Dictionary<string, object?> { ["hookDir"] = hookDir };
-            Console.WriteLine(JsonSerializer.Serialize(map));
+            string? groupsConf = args.Length > 2 ? args[2] : null;
+            Console.WriteLine(Diagnostics.BuildDumpJson(hookDir, groupsConf));
             return 0;
         }
 

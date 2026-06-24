@@ -33,6 +33,20 @@ $fx = New-Fixture
 $d = Dump $fx $null
 Assert-Equal $fx $d.hookDir "--dump echoes hookDir"
 
+# --- Task 2: state mapping ---
+$on  = Dump (New-Fixture -Enabled $true  -DefaultPack 'peon') $null
+Assert-Equal 'ON'   $on.state       "enabled:true => ON"
+Assert-Equal 'True' $on.configFound "config found"
+Assert-Equal 'peon' $on.defaultPack "default_pack read"
+
+$off = Dump (New-Fixture -Enabled $false -DefaultPack 'glados') $null
+Assert-Equal 'OFF' $off.state "enabled:false => OFF"
+
+$missingDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_none_" + [System.Guid]::NewGuid().ToString('N'))
+$unk = Dump $missingDir $null
+Assert-Equal 'UNKNOWN' $unk.state "missing config => UNKNOWN"
+Assert-Equal 'False'   $unk.configFound "missing config not found"
+
 Write-Host ""
 if ($script:fail -gt 0) { Write-Host "$($script:fail) failure(s)." -ForegroundColor Red; exit 1 }
 Write-Host "All tests passed." -ForegroundColor Green
