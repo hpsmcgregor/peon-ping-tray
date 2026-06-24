@@ -28,6 +28,17 @@ function New-Fixture { param([bool]$Enabled = $true, [string]$DefaultPack = 'peo
   return $dir
 }
 
+function Add-Pack { param([string]$HookDir, [string]$Id, [string]$DisplayName, [switch]$NoWav)
+  $p = Join-Path (Join-Path $HookDir 'packs') $Id
+  New-Item -ItemType Directory -Force -Path (Join-Path $p 'sounds') | Out-Null
+  ($([pscustomobject]@{ display_name = $DisplayName }) | ConvertTo-Json) |
+    Set-Content -Path (Join-Path $p 'openpeon.json') -Encoding UTF8
+  if (-not $NoWav) {
+    Set-Content -Path (Join-Path $p 'sounds\a_first.wav') -Value 'x' -Encoding ASCII
+    Set-Content -Path (Join-Path $p 'sounds\b_second.wav') -Value 'x' -Encoding ASCII
+  }
+}
+
 # --- Task 1 smoke ---
 $fx = New-Fixture
 $d = Dump $fx $null
@@ -46,6 +57,22 @@ $missingDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_none_" + [System
 $unk = Dump $missingDir $null
 Assert-Equal 'UNKNOWN' $unk.state "missing config => UNKNOWN"
 Assert-Equal 'False'   $unk.configFound "missing config not found"
+
+# --- Task 3: pack discovery ---
+$fx3 = New-Fixture -Enabled $true -DefaultPack 'peon'
+Add-Pack -HookDir $fx3 -Id 'peon'   -DisplayName 'Orc Peon'
+Add-Pack -HookDir $fx3 -Id 'glados' -DisplayName 'GLaDOS'
+Add-Pack -HookDir $fx3 -Id 'nodisp' -DisplayName '' -NoWav
+$d3 = Dump $fx3 $null
+$ids = @($d3.packs | ForEach-Object { $_.id })
+Assert-True ($ids -contains 'peon' -and $ids -contains 'glados') "packs discovered"
+$peon = $d3.packs | Where-Object { $_.id -eq 'peon' }
+Assert-Equal 'Orc Peon' $peon.displayName "display_name read"
+Assert-Equal 'True'     $peon.isCurrent   "current pack flagged"
+Assert-True ($peon.previewWav -like '*a_first.wav') "first wav chosen for preview"
+$nod = $d3.packs | Where-Object { $_.id -eq 'nodisp' }
+Assert-Equal 'nodisp' $nod.displayName "empty display_name falls back to id"
+Assert-True ($null -eq $nod.previewWav) "no wav => null preview"
 
 Write-Host ""
 if ($script:fail -gt 0) { Write-Host "$($script:fail) failure(s)." -ForegroundColor Red; exit 1 }

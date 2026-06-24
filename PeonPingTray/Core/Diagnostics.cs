@@ -17,6 +17,20 @@ public static class Diagnostics
         dump["defaultPack"] = cfg.DefaultPack;
         dump["volume"] = cfg.Volume;
 
+        var packs = PackCatalog.Discover(hookDir);
+        var packDump = new List<object?>();
+        foreach (var p in packs)
+        {
+            packDump.Add(new Dictionary<string, object?>
+            {
+                ["id"] = p.Id,
+                ["displayName"] = p.DisplayName,
+                ["previewWav"] = p.PreviewWav,
+                ["isCurrent"] = p.Id == cfg.DefaultPack
+            });
+        }
+        dump["packs"] = packDump;
+
         return JsonSerializer.Serialize(dump);
     }
 }
