@@ -1,5 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
 using PeonPingTray.Core;
 
 namespace PeonPingTray;
@@ -43,7 +45,13 @@ static class Program
             return 0;
         }
 
-        // GUI launch is wired up in Task 7.
+        bool createdNew;
+        using var mutex = new Mutex(true, "PeonPingTray_SingleInstance", out createdNew);
+        if (!createdNew) return 0;     // already running
+
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        Application.Run(new TrayApplicationContext());
         return 0;
     }
 }
