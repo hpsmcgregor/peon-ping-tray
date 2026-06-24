@@ -15,28 +15,27 @@ public static class PeonCli
             return false;
         }
 
-        string argline = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\"";
-        foreach (string a in peonArgs) argline += " " + Quote(a);
-
         var psi = new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = argline,
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardError = true,
             RedirectStandardOutput = true
         };
+        AddPwshArgs(psi, script, peonArgs);
 
         try
         {
             using Process? p = Process.Start(psi);
             if (p is null) { Log("Process.Start returned null"); return false; }
             // Drain stdout asynchronously while reading stderr to avoid a pipe-buffer deadlock.
+            // GetAwaiter().GetResult() rethrows any read fault directly into the catch below
+            // (unlike Wait(), which wraps it in AggregateException).
             System.Threading.Tasks.Task<string> outTask = p.StandardOutput.ReadToEndAsync();
             string err = p.StandardError.ReadToEnd();
-            outTask.Wait();
+            outTask.GetAwaiter().GetResult();
             p.WaitForExit();
             if (p.ExitCode != 0)
             {
@@ -64,24 +63,36 @@ public static class PeonCli
             return;
         }
 
-        string argline = "-NoProfile -ExecutionPolicy Bypass -File \"" + script +
-            "\" -path \"" + soundPath + "\" -vol " +
-            volume.ToString(System.Globalization.CultureInfo.InvariantCulture);
-
         var psi = new ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = argline,
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden
         };
+        AddPwshArgs(psi, script, "-path", soundPath, "-vol",
+            volume.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-        try { Process.Start(psi); }
+        try
+        {
+            // Dispose only the .NET Process handle; the powershell.exe child keeps
+            // running independently until the clip finishes.
+            using Process? proc = Process.Start(psi);
+        }
         catch (Exception ex) { Log("Failed to play preview: " + ex.Message); }
     }
 
-    static string Quote(string s) => s.IndexOf(' ') < 0 ? s : "\"" + s + "\"";
+    // Build a verbatim argument vector (no manual quoting): ArgumentList escapes each
+    // argument correctly, so paths containing spaces or quotes cannot break or inject.
+    static void AddPwshArgs(ProcessStartInfo psi, string scriptPath, params string[] scriptArgs)
+    {
+        psi.ArgumentList.Add("-NoProfile");
+        psi.ArgumentList.Add("-ExecutionPolicy");
+        psi.ArgumentList.Add("Bypass");
+        psi.ArgumentList.Add("-File");
+        psi.ArgumentList.Add(scriptPath);
+        foreach (string a in scriptArgs) psi.ArgumentList.Add(a);
+    }
 
     static void Log(string msg)
     {
