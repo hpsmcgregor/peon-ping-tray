@@ -122,6 +122,18 @@ Assert-Equal 'FAIL' ($res2.Out).Trim() "--run-peon returns FAIL when peon.ps1 mi
 $iconOut = (Invoke-Exe @('--icon-selftest')).Out
 Assert-Equal '16x16 16x16 16x16' ("$iconOut").Trim() "icons render at 16x16 for all 3 states"
 
+# --- Task 8: install/uninstall round-trip (temp dirs, no launch) ---
+$instDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_inst_" + [System.Guid]::NewGuid().ToString('N'))
+$startDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_start_" + [System.Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $startDir | Out-Null
+& (Join-Path $root 'install.ps1') -InstallDir $instDir -StartupDir $startDir -NoLaunch | Out-Null
+Assert-True (Test-Path (Join-Path $instDir 'PeonPingTray.exe')) "install copied exe"
+Assert-True (Test-Path (Join-Path $instDir 'peonping-groups.conf')) "install copied groups.conf"
+Assert-True (Test-Path (Join-Path $startDir 'PeonPingTray.lnk')) "install created startup shortcut"
+& (Join-Path $root 'uninstall.ps1') -InstallDir $instDir -StartupDir $startDir | Out-Null
+Assert-True (-not (Test-Path $instDir)) "uninstall removed install dir"
+Assert-True (-not (Test-Path (Join-Path $startDir 'PeonPingTray.lnk'))) "uninstall removed shortcut"
+
 Write-Host ""
 if ($script:fail -gt 0) { Write-Host "$($script:fail) failure(s)." -ForegroundColor Red; exit 1 }
 Write-Host "All tests passed." -ForegroundColor Green
