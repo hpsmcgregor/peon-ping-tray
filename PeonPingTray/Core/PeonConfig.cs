@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace PeonPingTray.Core;
 
@@ -44,5 +45,27 @@ public sealed class PeonConfig
             cfg.Enabled = null;
         }
         return cfg;
+    }
+
+    // Set ONLY the top-level "enabled" flag, leaving every other key — including a
+    // nested tts.enabled — untouched. peon-ping's own pause/resume uses an unanchored
+    // regex that flips every "enabled" in the file (re-enabling TTS); editing the
+    // parsed object instead targets exactly the root flag.
+    public static bool SetEnabled(string hookDir, bool enabled)
+    {
+        string path = Paths.ConfigJson(hookDir);
+        if (!File.Exists(path)) return false;
+        try
+        {
+            string text = File.ReadAllText(path).TrimStart('﻿'); // strip UTF-8 BOM
+            if (JsonNode.Parse(text) is not JsonObject root) return false;
+            root["enabled"] = enabled;
+            File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

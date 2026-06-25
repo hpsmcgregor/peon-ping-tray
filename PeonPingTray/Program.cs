@@ -35,6 +35,16 @@ static class Program
             return ok ? 0 : 1;
         }
 
+        if (mode == "--set-enabled")
+        {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+            bool val = args.Length > 1 && string.Equals(args[1], "true", StringComparison.OrdinalIgnoreCase);
+            string hookDir = args.Length > 2 ? args[2] : Paths.DefaultHookDir();
+            bool ok = PeonConfig.SetEnabled(hookDir, val);
+            Console.WriteLine(ok ? "OK" : "FAIL");
+            return ok ? 0 : 1;
+        }
+
         if (mode == "--icon-selftest")
         {
             AttachConsole(ATTACH_PARENT_PROCESS);

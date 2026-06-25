@@ -130,6 +130,31 @@ Assert-Equal 'FAIL' ($res2.Out).Trim() "--run-peon returns FAIL when peon.ps1 mi
 $iconOut = (Invoke-Exe @('--icon-selftest')).Out
 Assert-Equal '16x16 16x16 16x16' ("$iconOut").Trim() "icons render at 16x16 for all 3 states"
 
+# --- Toggle sets only top-level enabled, never the nested tts.enabled ---
+# Regression: peon-ping's pause/resume regex flips every "enabled" in the file,
+# silently re-enabling TTS. The tray edits the parsed root flag instead.
+$fxT = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_tts_" + [System.Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $fxT | Out-Null
+$cfgT = Join-Path $fxT 'config.json'
+@'
+{
+  "enabled": true,
+  "default_pack": "peon",
+  "volume": 0.5,
+  "tts": { "enabled": true, "voice": "default" }
+}
+'@ | Set-Content -Path $cfgT -Encoding UTF8
+
+Assert-Equal 'OK' ((Invoke-Exe @('--set-enabled', 'false', $fxT)).Out).Trim() "--set-enabled false returns OK"
+$afterOff = Get-Content $cfgT -Raw | ConvertFrom-Json
+Assert-Equal 'False' "$($afterOff.enabled)"     "mute sets top-level enabled=false"
+Assert-Equal 'True'  "$($afterOff.tts.enabled)" "mute leaves nested tts.enabled untouched"
+
+Assert-Equal 'OK' ((Invoke-Exe @('--set-enabled', 'true', $fxT)).Out).Trim() "--set-enabled true returns OK"
+$afterOn = Get-Content $cfgT -Raw | ConvertFrom-Json
+Assert-Equal 'True' "$($afterOn.enabled)"     "unmute sets top-level enabled=true"
+Assert-Equal 'True' "$($afterOn.tts.enabled)" "unmute leaves nested tts.enabled untouched"
+
 # --- Task 8: install/uninstall round-trip (temp dirs, no launch) ---
 $instDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_inst_" + [System.Guid]::NewGuid().ToString('N'))
 $startDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ppt_start_" + [System.Guid]::NewGuid().ToString('N'))

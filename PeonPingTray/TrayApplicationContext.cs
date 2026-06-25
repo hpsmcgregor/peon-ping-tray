@@ -114,9 +114,9 @@ public sealed class TrayApplicationContext : ApplicationContext
         _menu.Items.Add(header);
 
         if (state == "OFF")
-            _menu.Items.Add(Item("Unmute", (_, _) => { PeonCli.Run(_hookDir, "resume"); UpdateIcon(); }));
+            _menu.Items.Add(Item("Unmute", (_, _) => { PeonConfig.SetEnabled(_hookDir, true); UpdateIcon(); }));
         else
-            _menu.Items.Add(Item("Mute", (_, _) => { PeonCli.Run(_hookDir, "pause"); UpdateIcon(); }));
+            _menu.Items.Add(Item("Mute", (_, _) => { PeonConfig.SetEnabled(_hookDir, false); UpdateIcon(); }));
 
         _menu.Items.Add(new ToolStripSeparator());
 
